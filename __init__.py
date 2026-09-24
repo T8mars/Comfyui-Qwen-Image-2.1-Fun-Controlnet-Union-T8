@@ -1,12 +1,29 @@
 """ComfyUI adapter for Alibaba PAI's Qwen Image 2.1 Fun Union branch."""
 
 import json
+import os
 import struct
 
 import folder_paths
 
 
 CONTROL_MODES = ("Canny", "Depth", "Grayscale", "HED", "Lineart", "MLSD", "Pose", "Scribble")
+MAX_HEADER_BYTES = 1024 * 1024
+
+
+def _checkpoint_header(path):
+    with open(path, "rb") as stream:
+        file_size = os.fstat(stream.fileno()).st_size
+        prefix = stream.read(8)
+        if len(prefix) != 8:
+            raise ValueError("UNION checkpoint has no safetensors header.")
+        header_length = struct.unpack("<Q", prefix)[0]
+        if not 2 <= header_length <= min(file_size - 8, MAX_HEADER_BYTES):
+            raise ValueError("UNION checkpoint has an invalid safetensors header length.")
+        header_bytes = stream.read(header_length)
+        if len(header_bytes) != header_length:
+            raise ValueError("UNION checkpoint has a truncated safetensors header.")
+        return json.loads(header_bytes)
 
 
 def _native_nodes():
@@ -37,9 +54,7 @@ class QwenImage21UnionLoader:
 
     def load(self, union_model):
         path = folder_paths.get_full_path_or_raise("controlnet", union_model)
-        with open(path, "rb") as stream:
-            header_length = struct.unpack("<Q", stream.read(8))[0]
-            header = json.loads(stream.read(header_length))
+        header = _checkpoint_header(path)
         keys = set(header)
         required = {"control_img_in.weight", "control_blocks.0.img_mlp.out.weight"}
         if not required.issubset(keys):
@@ -103,7 +118,8 @@ class QwenImage21UnionApply:
     DESCRIPTION = (
         "Apply a prepared Canny, Depth, Grayscale, HED, Lineart, MLSD, Pose or Scribble map. "
         "The mode labels the map; the Union model reads the pixels, with no mode embedding. "
-        "For inpainting, connect an image and a white-to-regenerate mask."
+        "For inpainting, connect an image and a white-to-regenerate mask. "
+        "Condition images and mask must each contain one image."
     )
 
     def apply(self, model, union_patch, vae, control_mode, strength, start_percent, end_percent,
@@ -114,6 +130,11 @@ class QwenImage21UnionApply:
             raise ValueError("start_percent must not exceed end_percent")
         if inpaint_image is not None and mask is None:
             raise ValueError("Connect a mask when using inpaint_image (white = regenerate).")
+        for name, image in (("control_image", control_image), ("inpaint_image", inpaint_image)):
+            if image is not None and image.shape[0] != 1:
+                raise ValueError(f"{name} must contain one image; native Qwen Image 2.1 uses only the first.")
+        if mask is not None and mask.ndim >= 3 and mask.shape[0] != 1:
+            raise ValueError("mask must contain one image; native Qwen Image 2.1 uses only the first.")
         _, _, native_apply = _native_nodes()
         result = native_apply.execute(
             model=model,
@@ -140,17 +161,27 @@ class QwenImage21UnionLatentFromImage:
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "make_latent"
     CATEGORY = "Qwen Image 2.1/Union"
-    DESCRIPTION = "Make a 64-channel Qwen Image 2.1 latent at the control image's aspect ratio."
+    DESCRIPTION = "Make a 64-channel Qwen Image 2.1 latent from one image, with a 4096-pixel output-side limit."
 
     def make_latent(self, image, resolution):
         import math
-        import torch
-        import comfy.model_management
 
         batch, height, width, _ = image.shape
+        if batch != 1:
+            raise ValueError("Connect one image; native Qwen Image 2.1 uses only the first control image.")
+        if height == 0 or width == 0:
+            raise ValueError("Control image must have nonzero width and height.")
         ratio = width / height
         target_width = max(32, round(math.sqrt(resolution * resolution * ratio) / 32) * 32)
         target_height = max(32, round(math.sqrt(resolution * resolution / ratio) / 32) * 32)
+        if max(target_width, target_height) > 4096:
+            raise ValueError(
+                f"Control image aspect ratio produces {target_width}x{target_height}; "
+                "reduce resolution or crop/pad the image so neither output side exceeds 4096."
+            )
+        import torch
+        import comfy.model_management
+
         latent = torch.zeros(
             [batch, 64, target_height // 16, target_width // 16],
             device=comfy.model_management.intermediate_device(),

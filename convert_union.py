@@ -17,6 +17,10 @@ EXPECTED_SHA256 = "65d6b66d734da9e7ff5ef04e7db3a133553a52a3f29a7fcb3e9cce8fa21dc
 MODEL_NAME = "Qwen-Image-2.1-Fun-Controlnet-Union-ComfyUI.safetensors"
 
 
+def output_path(source, requested):
+    return requested if requested is not None else source.parent / MODEL_NAME
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -90,6 +94,6 @@ def convert(source, output):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=Path)
-    parser.add_argument("--output", type=Path, default=Path("models/controlnet") / MODEL_NAME)
+    parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
-    print(json.dumps(convert(args.source, args.output), indent=2))
+    print(json.dumps(convert(args.source, output_path(args.source, args.output)), indent=2))

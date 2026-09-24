@@ -29,6 +29,8 @@ Copy the sample files from [`assets/`](assets) to `ComfyUI/input/`, then drag a 
 
 Connect a **prepared** Canny, Depth, Grayscale, HED, Lineart, MLSD, Pose, or Scribble map to **Apply Qwen Image 2.1 UNION**. The mode selector describes the map; it does not preprocess a photograph. For inpainting, connect the source image and a mask where **white is regenerated**. **Qwen 2.1 Latent From Control Image** keeps the input aspect ratio. The native `TextEncodeQwenImage21` node can also accept image references.
 
+Each connected condition input (control image, inpaint image, or mask) must contain one image; the native patch otherwise uses only the first item of each batch. To sample multiple seeds from the same control, repeat the latent after the aspect-ratio node. Extremely wide or tall inputs that would produce an output side above 4096 pixels are rejected; reduce resolution or crop/pad the input.
+
 The loader validates the 16-block Union checkpoint. All eight map workflows and the inpaint workflow were run successfully; the pictured Canny result used the default 40 steps at 800×1312 output.
 
 ## License and provenance
