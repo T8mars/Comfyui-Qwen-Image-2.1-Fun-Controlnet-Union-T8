@@ -1,0 +1,10 @@
+{
+  "source_repo": "alibaba-pai/Qwen-Image-2.1-Fun-Controlnet-Union",
+  "source_revision": "8a4702014d4dabb5f896fcba917e2ee0a961465f",
+  "source_filename": "Qwen-Image-2.1-Fun-Controlnet-Union.safetensors",
+  "source_sha256": "65d6b66d734da9e7ff5ef04e7db3a133553a52a3f29a7fcb3e9cce8fa21dcfcd",
+  "output_filename": "Qwen-Image-2.1-Fun-Controlnet-Union-ComfyUI.safetensors",
+  "output_sha256": "b3f0f3a54a4b12e0e0fbd4c5f0d68785360f775ab9186641c4f28a7817e29711",
+  "tensor_count": 180,
+  "control_blocks": 16
+}

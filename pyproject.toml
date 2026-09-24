@@ -1,0 +1,17 @@
+[project]
+name = "qwen-image-2-1-fun-controlnet-union-t8"
+version = "1.0.0"
+description = "Native Qwen Image 2.1 Fun ControlNet Union loader and conditioning nodes for ComfyUI"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/T8mars/Comfyui-Qwen-Image-2.1-Fun-Controlnet-Union-T8"
+Documentation = "https://github.com/T8mars/Comfyui-Qwen-Image-2.1-Fun-Controlnet-Union-T8#readme"
+"Bug Tracker" = "https://github.com/T8mars/Comfyui-Qwen-Image-2.1-Fun-Controlnet-Union-T8/issues"
+Model = "https://huggingface.co/t8star/Qwen-Image-2.1-Fun-Controlnet-Union-Comfy"
+
+[tool.comfy]
+PublisherId = "t8star"
+DisplayName = "Qwen Image 2.1 Fun ControlNet Union (T8)"
