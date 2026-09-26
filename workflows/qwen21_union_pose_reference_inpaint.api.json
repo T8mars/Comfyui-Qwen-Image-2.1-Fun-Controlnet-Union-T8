@@ -1,0 +1,151 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "qwen_image_2.1_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    }
+  },
+  "4": {
+    "class_type": "QwenImage21UnionLoader",
+    "inputs": {
+      "union_model": "Qwen-Image-2.1-Fun-Controlnet-Union-ComfyUI.safetensors"
+    }
+  },
+  "5": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "inpaint_control.jpg"
+    }
+  },
+  "6": {
+    "class_type": "QwenImage21UnionReferenceEncode",
+    "inputs": {
+      "prompt": "A detailed realistic image, redraw the masked area to follow the pose control while preserving the unmasked scene.",
+      "negative_prompt": "",
+      "resolution": 1024,
+      "clip": [
+        "2",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ],
+      "reference_image": [
+        "11",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "QwenImage21UnionApply",
+    "inputs": {
+      "control_mode": "Pose",
+      "strength": 1.0,
+      "start_percent": 0.0,
+      "end_percent": 1.0,
+      "model": [
+        "1",
+        0
+      ],
+      "union_patch": [
+        "4",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ],
+      "control_image": [
+        "5",
+        0
+      ],
+      "inpaint_image": [
+        "11",
+        0
+      ],
+      "mask": [
+        "12",
+        0
+      ]
+    }
+  },
+  "8": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": 43,
+      "steps": 40,
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0,
+      "model": [
+        "7",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "6",
+        1
+      ],
+      "latent_image": [
+        "6",
+        2
+      ]
+    }
+  },
+  "9": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "8",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "10": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "Qwen21_Union_Pose",
+      "images": [
+        "9",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "inpaint_source.png"
+    }
+  },
+  "12": {
+    "class_type": "LoadImageMask",
+    "inputs": {
+      "image": "inpaint_mask.png",
+      "channel": "red"
+    }
+  }
+}

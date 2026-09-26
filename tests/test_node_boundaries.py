@@ -57,6 +57,11 @@ class BoundaryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "neither output side exceeds 4096"):
             make(types.SimpleNamespace(shape=(1, 4096, 1, 3)), 1024)
 
+    def test_reference_requires_single_image(self):
+        encode = self.node.QwenImage21UnionReferenceEncode().encode
+        with self.assertRaisesRegex(ValueError, "reference_image must contain one"):
+            encode(None, None, types.SimpleNamespace(shape=(2, 512, 512, 3)), "", "", 1024)
+
 
 if __name__ == "__main__":
     unittest.main()

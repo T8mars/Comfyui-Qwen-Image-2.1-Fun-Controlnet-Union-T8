@@ -31,11 +31,12 @@ def _native_nodes():
         from comfy_extras.nodes_model_patch import dit_patch_operations
         from comfy_extras.nodes_qwen import QwenImage21FunControlNetApply
         from comfy.ldm.qwen_image21.model import QwenImage21FunControl
-    except ImportError as exc:
-        raise RuntimeError(
-            "Qwen Image 2.1 Fun Union needs ComfyUI with native Qwen Image 2.1 Fun support "
-            "(Comfy-Org/ComfyUI PR #16519 or a release containing it)."
-        ) from exc
+    except ImportError:
+        from .union_compat import (
+            dit_patch_operations,
+            QwenImage21FunControl,
+            QwenImage21FunControlNetApply,
+        )
     return dit_patch_operations, QwenImage21FunControl, QwenImage21FunControlNetApply
 
 
@@ -147,6 +148,44 @@ class QwenImage21UnionApply:
             inpaint_image=inpaint_image,
             mask=mask,
         )
+        return result.result if hasattr(result, "result") else result
+
+
+class QwenImage21UnionReferenceEncode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "clip": ("CLIP",),
+            "vae": ("VAE",),
+            "reference_image": ("IMAGE",),
+            "prompt": ("STRING", {"multiline": True, "default": ""}),
+            "negative_prompt": ("STRING", {"multiline": True, "default": ""}),
+            "resolution": ("INT", {"default": 1024, "min": 0, "max": 4096, "step": 32}),
+        }}
+
+    RETURN_TYPES = ("CONDITIONING", "CONDITIONING", "LATENT")
+    RETURN_NAMES = ("positive", "negative", "latent")
+    FUNCTION = "encode"
+    CATEGORY = "Qwen Image 2.1/Union"
+    DESCRIPTION = (
+        "Encode an image reference for Qwen Image 2.1 editing. Connect its positive and latent "
+        "outputs to the sampler; use a separate prepared map for UNION control_image. "
+        "For masked editing also connect the source to inpaint_image with a mask."
+    )
+
+    def encode(self, clip, vae, reference_image, prompt, negative_prompt, resolution):
+        if reference_image.shape[0] != 1:
+            raise ValueError("reference_image must contain one image.")
+        from comfy_extras.nodes_qwen import TextEncodeQwenImage21
+
+        result = TextEncodeQwenImage21.execute(
+            clip=clip,
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            vae=vae,
+            resolution=resolution,
+            images={"image_1": reference_image},
+        )
         return result.result
 
 
@@ -192,11 +231,13 @@ class QwenImage21UnionLatentFromImage:
 NODE_CLASS_MAPPINGS = {
     "QwenImage21UnionLoader": QwenImage21UnionLoader,
     "QwenImage21UnionApply": QwenImage21UnionApply,
+    "QwenImage21UnionReferenceEncode": QwenImage21UnionReferenceEncode,
     "QwenImage21UnionLatentFromImage": QwenImage21UnionLatentFromImage,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "QwenImage21UnionLoader": "Load Qwen Image 2.1 UNION",
     "QwenImage21UnionApply": "Apply Qwen Image 2.1 UNION",
+    "QwenImage21UnionReferenceEncode": "Qwen 2.1 UNION Image Reference Encode",
     "QwenImage21UnionLatentFromImage": "Qwen 2.1 Latent From Control Image",
 }

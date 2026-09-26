@@ -22,7 +22,7 @@ class ReleaseTests(unittest.TestCase):
     def test_canvas_and_api_links_match(self):
         ui_files = sorted(path for path in WORKFLOWS.glob("*.json")
                           if not path.name.endswith(".api.json"))
-        self.assertEqual(len(ui_files), 9)
+        self.assertEqual(len(ui_files), 11)
         for path in ui_files:
             with self.subTest(workflow=path.name):
                 graph = json.loads(path.read_text(encoding="utf-8"))
@@ -69,6 +69,24 @@ class ReleaseTests(unittest.TestCase):
                 if name == "inpaint_pose":
                     self.assertEqual(prompt["7"]["inputs"]["inpaint_image"], ["11", 0])
                     self.assertEqual(prompt["7"]["inputs"]["mask"], ["12", 0])
+
+    def test_reference_edit_workflows(self):
+        for name, source in (("pose_reference_edit", "14"),
+                             ("pose_reference_inpaint", "11")):
+            with self.subTest(workflow=name):
+                prompt = json.loads((WORKFLOWS / f"qwen21_union_{name}.api.json")
+                                    .read_text(encoding="utf-8"))
+                self.assertEqual(prompt["6"]["class_type"], "QwenImage21UnionReferenceEncode")
+                self.assertEqual(prompt["6"]["inputs"]["reference_image"], [source, 0])
+                self.assertEqual(prompt["8"]["inputs"]["positive"], ["6", 0])
+                self.assertEqual(prompt["8"]["inputs"]["negative"], ["6", 1])
+                self.assertEqual(prompt["8"]["inputs"]["latent_image"], ["6", 2])
+                if name == "pose_reference_inpaint":
+                    self.assertEqual(prompt["7"]["inputs"]["inpaint_image"], ["11", 0])
+                    self.assertEqual(prompt["7"]["inputs"]["mask"], ["12", 0])
+                else:
+                    self.assertNotIn("inpaint_image", prompt["7"]["inputs"])
+                    self.assertNotIn("mask", prompt["7"]["inputs"])
 
 
 if __name__ == "__main__":
