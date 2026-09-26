@@ -154,28 +154,42 @@ class QwenImage21UnionApply:
 class QwenImage21UnionReferenceEncode:
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {
-            "clip": ("CLIP",),
-            "vae": ("VAE",),
-            "reference_image": ("IMAGE",),
-            "prompt": ("STRING", {"multiline": True, "default": ""}),
-            "negative_prompt": ("STRING", {"multiline": True, "default": ""}),
-            "resolution": ("INT", {"default": 1024, "min": 0, "max": 4096, "step": 32}),
-        }}
+        return {
+            "required": {
+                "clip": ("CLIP",),
+                "vae": ("VAE",),
+                "reference_image": ("IMAGE",),
+                "prompt": ("STRING", {"multiline": True, "default": ""}),
+                "negative_prompt": ("STRING", {"multiline": True, "default": ""}),
+                "resolution": ("INT", {"default": 1024, "min": 0, "max": 4096, "step": 32}),
+            },
+            "optional": {
+                "reference_image_2": ("IMAGE",),
+                "reference_image_3": ("IMAGE",),
+            },
+        }
 
     RETURN_TYPES = ("CONDITIONING", "CONDITIONING", "LATENT")
     RETURN_NAMES = ("positive", "negative", "latent")
     FUNCTION = "encode"
     CATEGORY = "Qwen Image 2.1/Union"
     DESCRIPTION = (
-        "Encode an image reference for Qwen Image 2.1 editing. Connect its positive and latent "
-        "outputs to the sampler; use a separate prepared map for UNION control_image. "
-        "For masked editing also connect the source to inpaint_image with a mask."
+        "reference_image is image_1, the edit target and canvas. Optional image_2 and image_3 "
+        "provide visual references. Connect positive, negative and latent to the sampler; "
+        "the latent must come from this node to match image_1. Use a prepared map for "
+        "UNION control_image. For masked editing also connect the source to inpaint_image."
     )
 
-    def encode(self, clip, vae, reference_image, prompt, negative_prompt, resolution):
-        if reference_image.shape[0] != 1:
-            raise ValueError("reference_image must contain one image.")
+    def encode(self, clip, vae, reference_image, prompt, negative_prompt, resolution,
+               reference_image_2=None, reference_image_3=None):
+        images = {}
+        for index, image in enumerate((reference_image, reference_image_2, reference_image_3), start=1):
+            if image is None:
+                continue
+            if image.shape[0] != 1:
+                name = "reference_image" if index == 1 else f"reference_image_{index}"
+                raise ValueError(f"{name} must contain one image.")
+            images[f"image_{index}"] = image
         from comfy_extras.nodes_qwen import TextEncodeQwenImage21
 
         result = TextEncodeQwenImage21.execute(
@@ -184,7 +198,7 @@ class QwenImage21UnionReferenceEncode:
             negative_prompt=negative_prompt,
             vae=vae,
             resolution=resolution,
-            images={"image_1": reference_image},
+            images=images,
         )
         return result.result
 

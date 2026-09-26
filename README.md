@@ -29,10 +29,13 @@ Copy the sample files from [`assets/`](assets) to `ComfyUI/input/`, then drag a 
 
 Connect a **prepared** Canny, Depth, Grayscale, HED, Lineart, MLSD, Pose, or Scribble map to **Apply Qwen Image 2.1 UNION**. The mode selector describes the map; it does not preprocess a photograph. To edit a photograph, connect it to **Qwen 2.1 UNION Image Reference Encode** and connect that node's positive, negative, and latent outputs to the sampler. The reference image sets the edit's canvas size. For masked edits, also connect the source image to `inpaint_image` and a mask to `mask`; **white guides regeneration and black guides preservation**. The mask conditions the model and does not guarantee unchanged pixels outside the mask.
 
+For two images, `reference_image` is **image 1**, the edit target that determines output aspect ratio; `reference_image_2` is an additional visual reference. Mention them as `<image1>` and `<image2>` in the prompt. Always connect this encoder's **latent** to the sampler. An unrelated empty latent, especially one with a different aspect ratio, can shift or lose the edit. Prepare the control map at the target canvas aspect ratio to avoid stretching it. Structural control does not guarantee an exact face or outfit transfer from another person.
+
 | Input | Image to provide |
 | --- | --- |
 | `control_image` | Preprocessed edge, depth, pose, or other selected control map |
-| `reference_image` | Original photograph or visual reference to edit |
+| `reference_image` | Image 1: original photograph to edit; determines output canvas |
+| `reference_image_2` / `_3` | Additional appearance or style references |
 | `inpaint_image` + `mask` | Source photograph and white-to-edit mask for guided local inpainting |
 
 Each connected condition input (control image, inpaint image, or mask) must contain one image; the native patch otherwise uses only the first item of each batch. To sample multiple seeds from the same control, repeat the latent after the aspect-ratio node. Extremely wide or tall inputs that would produce an output side above 4096 pixels are rejected; reduce resolution or crop/pad the input.

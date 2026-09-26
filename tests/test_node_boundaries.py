@@ -61,6 +61,32 @@ class BoundaryTests(unittest.TestCase):
         encode = self.node.QwenImage21UnionReferenceEncode().encode
         with self.assertRaisesRegex(ValueError, "reference_image must contain one"):
             encode(None, None, types.SimpleNamespace(shape=(2, 512, 512, 3)), "", "", 1024)
+        with self.assertRaisesRegex(ValueError, "reference_image_2 must contain one"):
+            encode(None, None, types.SimpleNamespace(shape=(1, 512, 512, 3)), "", "", 1024,
+                   reference_image_2=types.SimpleNamespace(shape=(2, 512, 512, 3)))
+
+    def test_reference_forwards_images_in_order(self):
+        first = types.SimpleNamespace(shape=(1, 512, 512, 3))
+        second = types.SimpleNamespace(shape=(1, 512, 512, 3))
+        captured = {}
+
+        class Native:
+            @staticmethod
+            def execute(**kwargs):
+                captured.update(kwargs)
+                return types.SimpleNamespace(result=("positive", "negative", "latent"))
+
+        native_module = types.ModuleType("comfy_extras.nodes_qwen")
+        native_module.TextEncodeQwenImage21 = Native
+        with patch.dict(sys.modules, {"comfy_extras": types.ModuleType("comfy_extras"),
+                                      "comfy_extras.nodes_qwen": native_module}):
+            result = self.node.QwenImage21UnionReferenceEncode().encode(
+                None, None, first, "edit <image1> using <image2>", "", 1024,
+                reference_image_2=second,
+            )
+        self.assertEqual(result, ("positive", "negative", "latent"))
+        self.assertIs(captured["images"]["image_1"], first)
+        self.assertIs(captured["images"]["image_2"], second)
 
 
 if __name__ == "__main__":

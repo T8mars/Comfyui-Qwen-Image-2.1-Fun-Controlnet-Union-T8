@@ -1,6 +1,6 @@
 [project]
 name = "qwen-image-2-1-fun-controlnet-union-t8"
-version = "1.0.2"
+version = "1.0.3"
 description = "Native Qwen Image 2.1 Fun ControlNet Union loader and conditioning nodes for ComfyUI"
 license = { file = "LICENSE_COMFYUI_GPL-3.0.txt" }
 requires-python = ">=3.10"
